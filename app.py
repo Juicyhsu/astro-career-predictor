@@ -276,9 +276,15 @@ st.markdown("""
     }
     
     .stButton > button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(255, 140, 0, 0.4);
+        transform: none;
+        box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
         background: linear-gradient(135deg, #FFBF00 0%, #FF6B00 100%);
+        transition: background 0.2s ease;
+    }
+    
+    .stButton > button:active {
+        transform: none;
+        box-shadow: 0 2px 8px rgba(255, 140, 0, 0.2);
     }
     
     /* 側邊欄樣式 */
@@ -308,8 +314,8 @@ PLANET_NAMES = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter',
 SIGN_NAMES_ZH = ['牡羊座', '金牛座', '雙子座', '巨蟹座', '獅子座', '處女座', 
                  '天秤座', '天蠍座', '射手座', '摩羯座', '水瓶座', '雙魚座']
 
-PLANET_NAMES_ZH = ['太陽', '月亮', '水星', '金星', '火星', '木星', 
-                   '土星', '天王星', '海王星', '冥王星']
+PLANET_NAMES_ZH = ['太陽☉', '月亮☽', '水星☿', '金星♀', '火星♂', '木星♃', 
+                   '土星♄', '天王星♅', '海王星♆', '冥王星♇']
 
 def get_sign_name_zh(longitude):
     """獲取中文星座名稱"""
@@ -767,59 +773,18 @@ def create_birth_chart_visualization(planets_data):
     
     return fig
 
-def generate_gemini_advice(planets_data):
-    """使用Gemini生成個人化建議"""
-    # 這裡需要設置你的Gemini API密鑰
-    # genai.configure(api_key="YOUR_API_KEY")
-    
-    # 構建星盤描述
-    chart_description = "個人星盤資訊：\n"
-    for planet in PLANET_NAMES + ['ASC']:
-        if planet in planets_data:
-            data = planets_data[planet]
-            chart_description += f"{planet}: {data['sign']} {data['sign_degree']:.1f}度\n"
-    
-    prompt = f"""
-    作為專業占星師，請根據以下星盤資訊提供個人化的職業建議：
-
-    {chart_description}
-
-    請提供：
-    1. 整體性格特質分析
-    2. 職業天賦和潛能
-    3. 適合的工作環境
-    4. 需要注意的挑戰
-    5. 具體的職業發展建議
-
-    請用繁體中文回答，語氣專業但親切。
-    """
-    
-    try:
-        # model = genai.GenerativeModel('gemini-pro')
-        # response = model.generate_content(prompt)
-        # return response.text
-        
-        # 暫時返回模擬結果
-        return """
-        **整體性格特質分析**
-        根據您的星盤配置，您具有獨特的個性組合...
-        
-        **職業天賦和潛能**
-        您在創意表達和人際溝通方面有突出的天賦...
-        
-        **適合的工作環境**
-        建議選擇能發揮創造力的動態環境...
-        
-        **需要注意的挑戰**
-        需要注意保持工作與生活的平衡...
-        
-        **具體的職業發展建議**
-        建議朝向能結合創意與實務的領域發展...
-        """
-    except:
-        return "暫時無法生成個人化建議，請稍後再試。"
 
 def main():
+     # 添加頂部錨點
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    
+    # 檢查是否要顯示成功提示（用toast）
+    if st.session_state.get('show_success', False):
+        st.toast('星盤解析完成！命運已揭曉🔮', icon='✅')
+        st.balloons()  # 加個慶祝動畫
+        # 立即清除標記
+        st.session_state.show_success = False
+    
     # 主標題
     st.markdown("""
     <div class="main-header">
@@ -864,7 +829,10 @@ def main():
     )
     
     # 計算按鈕
-    if st.sidebar.button("🔮 開始預測", type="primary"):
+    if st.sidebar.button("🔮 開始預測", type="primary", key="start_prediction"):
+        # 清除舊的Gemini結果（在最開始就清除）
+        st.session_state.gemini_result = None
+        
         # 載入模型
         model = load_model()
         if model is None:
@@ -878,121 +846,225 @@ def main():
             )
             
             if planets_data:
-                # 顯示星盤資訊
-                st.markdown("## 🌌 您的個人星盤")
+                # 保存到session state
+                st.session_state.planets_data = planets_data
+                st.session_state.model = model
                 
-                # 準備表格數據
-                planet_data = []
-                
-                # 先添加上升點
-                if 'ASC' in planets_data:
-                    asc_data = planets_data['ASC']
-                    planet_data.append({
-                        '天體': '上升點',
-                        '星座': get_sign_name_zh(asc_data['longitude']),
-                        '度數': f"{asc_data['sign_degree']:.1f}°",
-                        '宮位': f"第{asc_data.get('house', 1)}宮"
-                    })
-                
-                # 添加行星數據
-                for i, planet in enumerate(PLANET_NAMES):
-                    if planet in planets_data:
-                        data = planets_data[planet]
-                        planet_data.append({
-                            '天體': PLANET_NAMES_ZH[i],
-                            '星座': get_sign_name_zh(data['longitude']),
-                            '度數': f"{data['sign_degree']:.1f}°",
-                            '宮位': f"第{data.get('house', 1)}宮"
-                        })
-                
-                # 創建DataFrame並顯示
-                df_chart = pd.DataFrame(planet_data)
-                st.table(df_chart)
+                # 保存出生資訊用於顯示
+                st.session_state.birth_year = birth_date.year
+                st.session_state.birth_month = birth_date.month  
+                st.session_state.birth_day = birth_date.day
+                st.session_state.birth_hour = birth_hour
+                st.session_state.birth_minute = birth_minute
+                st.session_state.birth_city = city
                 
                 # 創建特徵向量並預測
                 with st.spinner("正在分析您的職業潛能..."):
                     features = create_one_hot_encoding(planets_data)
                     predictions = predict_career(model, features)
-                
-                if predictions:
-                    # 顯示預測結果
-                    st.markdown("## 🎯 職業領域預測結果")
                     
-                    # 創建兩欄布局
-                    col1, col2 = st.columns([1, 1])
-                    
-                    with col1:
-                        # 排名圖示
-                        rank_emojis = ['🥇', '🥈', '🥉', '🏅', '⭐']
+                    if predictions:
+                        # 保存預測結果
+                        st.session_state.predictions = predictions
+                                                
+                        # 設置成功提示標記（只顯示一次）
+                        st.session_state.show_success = True
                         
-                        # Top 5 排行榜
-                        for i, pred in enumerate(predictions):
-                            st.markdown(f"""
-                            <div class="prediction-card sparkle">
-                                <div style="display: flex; align-items: center;">
-                                    <span class="rank-icon">{pred['rank']}</span>
-                                    <div>
-                                        <h3 class="career-name">{rank_emojis[i]} {pred['career']}</h3>
-                                        <p class="probability-text">✨ 適配度: {pred['probability']:.1f}%</p>
-                                    </div>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    with col2:
-                        st.markdown("### 📊 適配度計算說明")
-                        st.markdown("""
-                        <div style="background: linear-gradient(135deg, #FFF8DC 0%, #FFEBCD 100%); 
-                                   padding: 1.5rem; border-radius: 15px; border: 2px solid #FFD700;">
-                        
-                        **🔮 計算方式說明：**
-                        
-                        **1. 星盤特徵提取**
-                        - 10顆行星位置 × 12星座 = 120維
-                        - 上升星座特徵 = 12維  
-                        - 宮位系統特徵 = 213維
-                        - **總計345維特徵向量**
-                        
-                        **2. AI模型分析**
-                        - 使用CatBoost機器學習算法
-                        - 基於全世界數萬人名人資料訓練
-                        - 15大職業領域分類預測
-                        
-                        **3. 適配度評分**
-                        - 0-100分制評分系統
-                        - 結合行星能量、星座特質、宮位領域等綜合作用力
-                        - 考量行星影響力權重
-                        
-                        **⚠️ 重要提醒**
-                        本預測基於名人數據，僅供參考娛樂用途
+                        # 重新運行頁面
+                        st.rerun()
+
+    # ========== 結果顯示區塊 - 移到這裡 ==========
+    # 檢查session state中是否有數據，如果有就顯示結果
+    if 'planets_data' in st.session_state and 'predictions' in st.session_state:
+        planets_data = st.session_state.planets_data
+        predictions = st.session_state.predictions
+        
+        # 顯示星盤資訊（包含出生資訊）
+        birth_info = f"{st.session_state.get('birth_year', birth_date.year)}年{st.session_state.get('birth_month', birth_date.month)}月{st.session_state.get('birth_day', birth_date.day)}日 {st.session_state.get('birth_hour', birth_hour)}:{st.session_state.get('birth_minute', birth_minute):02d} | {st.session_state.get('birth_city', city)}"
+        
+        st.markdown(f"""
+        ## 🌌 您的個人星盤結果
+        <div style="background: linear-gradient(135deg, #FFF8DC 0%, #FFEBCD 100%); 
+                   padding: 1rem; border-radius: 10px; border: 2px solid #FFD700; margin-bottom: 1rem;">
+            <p style="margin: 0; color: #8B4513; font-weight: bold; text-align: center;">
+                📅 {birth_info}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 準備表格數據
+        planet_data = []
+        
+        # 先添加上升點
+        if 'ASC' in planets_data:
+            asc_data = planets_data['ASC']
+            planet_data.append({
+                '天體': '上升點',
+                '星座': get_sign_name_zh(asc_data['longitude']),
+                '度數': f"{asc_data['sign_degree']:.1f}°",
+                '宮位': f"第{asc_data.get('house', 1)}宮"
+            })
+        
+        # 添加行星數據
+        for i, planet in enumerate(PLANET_NAMES):
+            if planet in planets_data:
+                data = planets_data[planet]
+                planet_data.append({
+                    '天體': PLANET_NAMES_ZH[i],
+                    '星座': get_sign_name_zh(data['longitude']),
+                    '度數': f"{data['sign_degree']:.1f}°",
+                    '宮位': f"第{data.get('house', 1)}宮"
+                })
+        
+        # 創建DataFrame並顯示
+        df_chart = pd.DataFrame(planet_data)
+        st.table(df_chart)
+        
+        # 顯示預測結果
+        st.markdown("## 🎯 職業領域預測結果")
+        
+        # 創建兩欄布局
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            # 排名圖示
+            rank_emojis = ['🥇', '🥈', '🥉', '🏅', '⭐']
+            
+            # Top 5 排行榜
+            for i, pred in enumerate(predictions):
+                st.markdown(f"""
+                <div class="prediction-card sparkle">
+                    <div style="display: flex; align-items: center;">
+                        <span class="rank-icon">{pred['rank']}</span>
+                        <div>
+                            <h3 class="career-name">{rank_emojis[i]} {pred['career']}</h3>
+                            <p class="probability-text">✨ 適配度: {pred['probability']:.1f}%</p>
                         </div>
-                        """, unsafe_allow_html=True)
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("### 📊 適配度計算說明")
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #FFF8DC 0%, #FFEBCD 100%); 
+                       padding: 1.5rem; border-radius: 15px; border: 2px solid #FFD700;">
+            
+            **🔮 計算方式說明：**
+            
+            **1. 星盤特徵提取**
+            - 10顆行星位置 × 12星座 = 120維
+            - 上升星座特徵 = 12維  
+            - 宮位系統特徵 = 213維
+            - **總計345維特徵向量**
+            
+            **2. AI模型分析**
+            - 使用CatBoost機器學習算法
+            - 基於全世界數萬人名人資料訓練
+            - 15大職業領域分類預測
+            
+            **3. 適配度評分**
+            - 0-100分制評分系統
+            - 結合行星能量、星座特質、宮位領域等綜合作用力
+            - 考量行星影響力權重
+            
+            **⚠️ 重要提醒**
+            本預測基於名人數據，僅供參考娛樂用途
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 視覺化圖表
+        st.markdown("## 📊 視覺化分析")
+        
+        fig_pie, fig_radar = create_visualization(predictions, planets_data)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.plotly_chart(fig_pie, use_container_width=True)
+        with col2:
+            st.plotly_chart(fig_radar, use_container_width=True)
+        
+        # Gemini個人化建議
+        st.markdown("## 🤖 AI個人化建議")
+
+        if st.button("🔮 生成個人化職業建議", type="primary", key="gemini_advice"):
+            with st.spinner("AI正在分析您的星盤..."):
+                try:
+                    api_key = st.secrets.get("GEMINI_API_KEY")
                     
-                    # 視覺化圖表
-                    st.markdown("## 📊 視覺化分析")
-                    
-                    fig_pie, fig_radar = create_visualization(predictions, planets_data)
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.plotly_chart(fig_pie, use_container_width=True)
-                    with col2:
-                        st.plotly_chart(fig_radar, use_container_width=True)
-                    
-                    # Gemini個人化建議
-                    st.markdown("## 🤖 AI個人化建議")
-                    
-                    if st.button("🔮 生成個人化職業建議"):
-                        with st.spinner("AI正在分析您的星盤..."):
-                            advice = generate_gemini_advice(planets_data)
-                            st.markdown(advice)
-    
+                    if not api_key:
+                        st.error("❌ 未設置Gemini API密鑰")
+                    else:
+                        genai.configure(api_key=api_key)
+                        model_gemini = genai.GenerativeModel('gemini-2.0-flash')
+
+                        # 準備星盤資訊
+                        chart_info = "個人星盤配置：\n"
+                        
+                        # 上升點
+                        if 'ASC' in planets_data:
+                            asc_data = planets_data['ASC']
+                            chart_info += f"上升點：{get_sign_name_zh(asc_data['longitude'])} {asc_data['sign_degree']:.1f}° 第{asc_data.get('house', 1)}宮\n"
+                        
+                        # 十大行星
+                        for i, planet in enumerate(PLANET_NAMES):
+                            if planet in planets_data:
+                                data = planets_data[planet]
+                                chart_info += f"{PLANET_NAMES_ZH[i]}：{get_sign_name_zh(data['longitude'])} {data['sign_degree']:.1f}° 第{data.get('house', 1)}宮\n"
+                        
+                        # 構建prompt
+                        prompt = f"""
+作為專業占星師，請根據以下星盤配置提供詳細解讀：
+
+{chart_info}
+
+請從以下角度分析（用繁體中文回答）：
+
+**🌟 個性特質分析**
+- 根據上升星座分析外在表現
+- 太陽星座的核心自我
+- 月亮星座的內在情感需求
+
+**💼 職業天賦領域**
+- 分析各行星在不同宮位的職業指向
+- 特別關注第2、6、10宮的行星配置
+- 提供3-5個最適合的職業方向
+
+**🎯 人生發展建議**
+- 基於星盤配置的人生課題
+- 需要注意的挑戰與機會
+- 個人成長的關鍵建議
+
+請提供具體、實用且正面的建議，字數控制在800字以內。
+                        """
+                        
+                        response = model_gemini.generate_content(prompt)
+                        # 保存到session state
+                        st.session_state.gemini_result = response.text
+                        
+                except Exception as e:
+                    st.session_state.gemini_result = f"❌ Gemini解讀發生錯誤：{str(e)}"
+        
+        # 顯示Gemini結果（如果存在）
+        if 'gemini_result' in st.session_state and st.session_state.gemini_result:
+            # 黃色細線分隔
+            st.markdown("""
+            <hr style="border: none; height: 2px; background: linear-gradient(90deg, #FFD700, #FFA500, #FFD700); margin: 2rem 0;">
+            """, unsafe_allow_html=True)
+            
+            st.markdown("### 🌟 專業占星師解讀")
+            st.markdown(st.session_state.gemini_result)
+
+    else:
+        st.info("💡 請在側邊欄輸入出生資訊，然後點擊「開始預測」")
+
     # 底部資訊
     st.markdown("---")
     st.markdown("""
-    <div style="text-align: center; color: #666;">
-        <p>⚠️ 本系統基於名人數據訓練，結果僅供參考</p>
+    <div style="text-align: center; color: #666; margin-top: 2rem;">
+        <p>🔮 <strong>專業占星職業推薦 AI 系統</strong></p>
         <p>🌟 占星預測結合現代AI技術，為您探索無限可能</p>
+        <p><small>基於Swiss Ephemeris權威占星計算</small></p>  
     </div>
     """, unsafe_allow_html=True)
 

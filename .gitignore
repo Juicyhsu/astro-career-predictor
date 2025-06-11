@@ -95,3 +95,9 @@ dmypy.json
 
 # 測試輸出
 test_output/
+
+
+#新增
+.streamlit/secrets.toml
+secrets.toml
+*.toml
