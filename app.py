@@ -4,13 +4,9 @@ import numpy as np
 import swisseph as swe
 import pytz
 from datetime import datetime, date, time
-import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import joblib
 import google.generativeai as genai
-import os
-from timezonefinder import TimezoneFinder
 from catboost import CatBoostClassifier
 import warnings
 warnings.filterwarnings('ignore')
