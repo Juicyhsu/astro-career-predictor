@@ -792,13 +792,45 @@ def main():
     # 側邊欄輸入
     st.sidebar.markdown("### 🌟 請輸入您的出生資訊")
     
-    # 出生日期
-    birth_date = st.sidebar.date_input(
-        "出生日期",
-        value=date(1990, 1, 1),
-        min_value=date(1900, 1, 1),
-        max_value=date.today()
-    )
+    # 出生日期 - 全部用下拉選單
+    st.sidebar.markdown("**出生日期**")
+    
+    col_year, col_month, col_day = st.sidebar.columns([1.2, 1, 1])
+    
+    with col_year:
+        birth_year = st.selectbox(
+            "年",
+            range(2024, 1899, -1),  # 從2024年倒數到1900年
+            index=34,  # 預設1990年 (2024-34=1990)
+            key="year_select"
+        )
+    
+    with col_month:
+        birth_month = st.selectbox(
+            "月",
+            range(1, 13),
+            index=0,  # 預設1月
+            key="month_select"
+        )
+    
+    with col_day:
+        # 根據年月計算該月的天數
+        import calendar
+        max_days = calendar.monthrange(birth_year, birth_month)[1]
+        
+        birth_day = st.selectbox(
+            "日",
+            range(1, max_days + 1),
+            index=0,  # 預設1日
+            key="day_select"
+        )
+    
+    # 建立date物件
+    birth_date = date(birth_year, birth_month, birth_day)
+    
+    # 顯示選擇的日期確認
+    st.sidebar.info(f"📅 選擇日期：{birth_date.strftime('%Y年%m月%d日')}")
+    
     
     # 出生時間 - 分開選擇
     st.sidebar.markdown("**出生時間**")
