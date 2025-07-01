@@ -15,7 +15,7 @@
 
 ### 🚀 線上體驗
 
-[點擊這裡體驗](your-streamlit-app-url)
+[點擊這裡體驗](https://astro-career-predictor-141913333.streamlit.app/)
 
 ### 📋 支援的職業領域
 
@@ -37,11 +37,6 @@
 14. 宗教精神類
 15. 特殊行業類
 
-### 🎨 界面預覽
-
-![主界面](screenshots/main-interface.png)
-![預測結果](screenshots/prediction-results.png)
-![視覺化分析](screenshots/visualization-charts.png)
 
 ### 🛠️ 技術架構
 
