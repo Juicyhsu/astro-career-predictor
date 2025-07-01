@@ -274,21 +274,21 @@ PLANET_NAMES_ZH = ['太陽☉', '月亮☽', '水星☿', '金星♀', '火星�
 
 # 職業分組對應 - 新版本中文名稱
 CAREER_GROUPS = {
-    'Creative_Writing': '創意寫作',
-    'Performance_Entertainment': '表演娛樂', 
+    'Creative_Writing': '創意寫作領域',
+    'Performance_Entertainment': '表演娛樂領域', 
     'Music_Industry': '音樂產業',
-    'Sports_Athletics': '體育運動',
+    'Sports_Athletics': '體育競技',
     'Politics_Government': '政治政府',
-    'Business_Management': '商業經營',
-    'Education_Research': '教育學術',
+    'Business_Management': '商業管理',
+    'Education_Research': '教育研究',
     'Military_Defense': '軍事國防',
     'Visual_Arts': '視覺藝術',
-    'Legal_System': '法律司法',
-    'Health_Medical': '醫療健康',
+    'Legal_System': '法律體系',
+    'Health_Medical': '健康醫療',
     'Engineering_Tech': '工程技術',
-    'Hospitality_Tourism': '餐旅服務',
-    'Religion_Spiritual': '宗教精神',
-    'Special_Industries': '特殊行業'
+    'Hospitality_Tourism': '餐旅觀光',
+    'Religion_Spiritual': '宗教靈性',
+    'Special_Industries': '特殊產業'
 }
 
 def get_sign_name_zh(longitude):
