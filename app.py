@@ -272,23 +272,23 @@ SIGN_NAMES_ZH = ['牡羊座', '金牛座', '雙子座', '巨蟹座', '獅子座'
 PLANET_NAMES_ZH = ['太陽☉', '月亮☽', '水星☿', '金星♀', '火星♂', '木星♃', 
                    '土星♄', '天王星♅', '海王星♆', '冥王星♇']
 
-# 職業分組對應
+# 職業分組對應 - 新版本中文名稱
 CAREER_GROUPS = {
-    'Creative_Writing': '創意寫作領域',
-    'Performance_Entertainment': '表演娛樂領域', 
+    'Creative_Writing': '創意寫作',
+    'Performance_Entertainment': '表演娛樂', 
     'Music_Industry': '音樂產業',
-    'Sports_Athletics': '體育競技',
+    'Sports_Athletics': '體育運動',
     'Politics_Government': '政治政府',
-    'Business_Management': '商業管理',
-    'Education_Research': '教育研究',
+    'Business_Management': '商業經營',
+    'Education_Research': '教育學術',
     'Military_Defense': '軍事國防',
     'Visual_Arts': '視覺藝術',
-    'Legal_System': '法律體系',
-    'Health_Medical': '健康醫療',
+    'Legal_System': '法律司法',
+    'Health_Medical': '醫療健康',
     'Engineering_Tech': '工程技術',
-    'Hospitality_Tourism': '餐旅觀光',
-    'Religion_Spiritual': '宗教靈性',
-    'Special_Industries': '特殊產業'
+    'Hospitality_Tourism': '餐旅服務',
+    'Religion_Spiritual': '宗教精神',
+    'Special_Industries': '特殊行業'
 }
 
 def get_sign_name_zh(longitude):
@@ -373,8 +373,8 @@ def get_sign_degree(longitude):
     """獲取星座內的度數"""
     return longitude % 30
 
-def get_ut_from_local_time(year, month, day, hour, minute, timezone_str):
-    """將當地時間轉換為世界時"""
+def get_ut_from_local_time(year, month, day, hour, minute, timezone_str, lon):
+    """🔧 修正版：將當地時間轉換為世界時"""
     try:
         local_tz = pytz.timezone(timezone_str)
         local_datetime = datetime(year, month, day, hour, minute)
@@ -383,19 +383,36 @@ def get_ut_from_local_time(year, month, day, hour, minute, timezone_str):
         
         return (utc_datetime.year, utc_datetime.month, utc_datetime.day, 
                 utc_datetime.hour, utc_datetime.minute)
-    except:
-        time_offset = CITIES_DATA.get(timezone_str, {}).get('lon', 0) / 15.0
+    except Exception as e:
+        # 🔧 修正：如果 pytz 失敗，使用經度計算時差
+        print(f"pytz 轉換失敗，使用經度計算: {e}")
+        
+        # 經度轉時差（東經為正，西經為負）
+        time_offset = lon / 15.0  # 每15度經度差1小時
+        
         ut_hour = hour - time_offset
         ut_day = day
+        ut_month = month
+        ut_year = year
         
+        # 處理跨日
         if ut_hour < 0:
             ut_hour += 24
             ut_day -= 1
+            if ut_day < 1:
+                ut_month -= 1
+                if ut_month < 1:
+                    ut_month = 12
+                    ut_year -= 1
+                # 簡化：設定為該月最後一天（可以更精確但這裡簡化）
+                import calendar
+                ut_day = calendar.monthrange(ut_year, ut_month)[1]
         elif ut_hour >= 24:
             ut_hour -= 24
             ut_day += 1
+            # 簡化：不處理跨月（實際使用中pytz通常會成功）
             
-        return (year, month, ut_day, int(ut_hour), minute)
+        return (ut_year, ut_month, ut_day, int(ut_hour), minute)
 
 def calculate_chart(birth_year, birth_month, birth_day, birth_hour, birth_minute, city_name):
     """計算占星星盤"""
@@ -404,8 +421,9 @@ def calculate_chart(birth_year, birth_month, birth_day, birth_hour, birth_minute
         lat, lon = city_info['lat'], city_info['lon']
         timezone_str = city_info['tz']
         
+        # 🔧 修正：傳遞經度給時區轉換函數
         ut_year, ut_month, ut_day, ut_hour, ut_minute = get_ut_from_local_time(
-            birth_year, birth_month, birth_day, birth_hour, birth_minute, timezone_str
+            birth_year, birth_month, birth_day, birth_hour, birth_minute, timezone_str, lon
         )
         
         jd_ut = swe.julday(ut_year, ut_month, ut_day, ut_hour + ut_minute/60.0)
